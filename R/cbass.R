@@ -40,6 +40,7 @@
 #'                         regularization proportions should be visualized.
 #'                         Choices are \code{'original'} or \code{'log'}; if not
 #'                         provided, a data-driven heuristic choice is used.
+#' @param progress Should a progress bar (for the C++ code only) be printed?
 #' @param ... Unused arguements. An error will be thrown if any unrecognized
 #'            arguments as given.
 #' @return An object of class \code{CBASS} containing the following elements (among others):
@@ -92,7 +93,8 @@ CBASS <- function(X,
                   t = 1.01,
                   alg.type = c("cbassviz", "cbassvizl1", "cbass", "cbassl1"),
                   npcs = min(4L, NCOL(X), NROW(X)),
-                  dendrogram.scale = NULL) {
+                  dendrogram.scale = NULL,
+                  progress = (interactive() && (clustRviz_logger_level() %in% c("MESSAGE", "WARNING", "ERROR")))) {
 
   tic <- Sys.time()
 
@@ -302,7 +304,8 @@ CBASS <- function(X,
                                    viz_initial_step = .clustRvizOptionsEnv[["viz_initial_step"]],
                                    viz_small_step = .clustRvizOptionsEnv[["viz_small_step"]],
                                    keep = .clustRvizOptionsEnv[["keep"]],
-                                   l1 = (alg.type == "cbassvizl1"))
+                                   l1 = (alg.type == "cbassvizl1"),
+                                   progress = progress)
   } else {
     cbass.sol.path <- CBASScpp(X,
                                D_row,
@@ -315,7 +318,8 @@ CBASS <- function(X,
                                max_iter = .clustRvizOptionsEnv[["max_iter"]],
                                burn_in = .clustRvizOptionsEnv[["burn_in"]],
                                keep = .clustRvizOptionsEnv[["keep"]],
-                               l1 = (alg.type == "cbassl1"))
+                               l1 = (alg.type == "cbassl1"),
+                               progress = progress)
   }
 
   ## FIXME - Convert lambda.path to a single column matrix instead of a vector

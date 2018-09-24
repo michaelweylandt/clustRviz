@@ -16,10 +16,12 @@ Rcpp::List CARP_VIZcpp(const Eigen::MatrixXd& X,
                        int viz_max_inner_iter  = 15,
                        double viz_initial_step = 1.1,
                        double viz_small_step   = 1.01,
-                       bool l1                 = false){
+                       bool l1                 = false,
+                       bool progress           = false){
 
   Eigen::Index n = X.rows();
   Eigen::Index p = X.cols();
+
   // Typically, our weights are "sparse" (i.e., mostly zeros) because we
   // drop small weights to achieve performance.
   Eigen::Index num_edges = D.rows();
@@ -87,6 +89,13 @@ Rcpp::List CARP_VIZcpp(const Eigen::MatrixXd& X,
   // smaller step sizes (as determined by viz_small_step)
   double t = viz_initial_step;
 
+  // Set-up progress bar
+  RProgress::RProgress pb("CARP-VIZ [:percent% Complete] :bar ETA :eta");
+
+  if(progress){
+    pb.tick();
+  }
+
   while( (iter < max_iter) & (nzeros_new < num_edges) ){
     ClustRVizLogger::info("Beginning iteration k = ") << iter + 1;
     ClustRVizLogger::debug("gamma = ") << gamma;
@@ -133,6 +142,11 @@ Rcpp::List CARP_VIZcpp(const Eigen::MatrixXd& X,
         v_zeros_new(i) = v_norms(i) == 0;
       }
       nzeros_new = v_zeros_new.sum();
+
+      if(progress){
+        pb.update(nzeros_new / (n + 0.0)); // Look at total number of possible fusions
+                                           // for progress. `+0.0` to convert to double.
+      }
 
       ClustRVizLogger::debug("Number of fusions identified ") << nzeros_new;
 

@@ -17,7 +17,8 @@ Rcpp::List CBASS_VIZcpp(const Eigen::MatrixXd& X,
                         int viz_max_inner_iter  = 15,
                         double viz_initial_step = 1.1,
                         double viz_small_step   = 1.01,
-                        bool l1                 = false){
+                        bool l1                 = false,
+                        bool progress           = true){
 
   Eigen::Index n = X.rows();
   Eigen::Index p = X.cols();
@@ -115,6 +116,13 @@ Rcpp::List CBASS_VIZcpp(const Eigen::MatrixXd& X,
   // smaller step sizes (as determined by viz_small_step)
   double t = viz_initial_step;
 
+  // Set-up progress bar
+  RProgress::RProgress pb("CBASS-VIZ [:percent% Complete] :bar ETA :eta");
+
+  if(progress){
+    pb.tick();
+  }
+
   while( ((nzeros_new_row < num_row_edges) | (nzeros_new_col < num_col_edges)) & (iter < max_iter) ){
     ClustRVizLogger::info("Beginning iteration k = ") << iter + 1;
     ClustRVizLogger::debug("gamma = ") << gamma;
@@ -203,6 +211,12 @@ Rcpp::List CBASS_VIZcpp(const Eigen::MatrixXd& X,
         v_col_zeros_new(i) = v_col_norms(i) == 0;
       }
       nzeros_new_col = v_col_zeros_new.sum();
+
+      if(progress){
+        // Look at total number of possible row and column fusions
+        // for progress. `+0.0` to convert to double.
+        pb.update((nzeros_new_row + nzeros_new_col) / (n + p + 0.0));
+      }
 
       ClustRVizLogger::debug("Number of row fusions identified ") << nzeros_new_row;
       ClustRVizLogger::debug("Number of column fusions identified ") << nzeros_new_col;
