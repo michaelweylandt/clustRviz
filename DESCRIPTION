@@ -38,7 +38,7 @@ Imports:
     RColorBrewer,
     gganimate (>= 0.1.1)
 RoxygenNote: 6.1.0
-LinkingTo: Rcpp, RcppEigen
+LinkingTo: Rcpp, RcppEigen, progress
 Suggests: testthat,
     knitr,
     rmarkdown,

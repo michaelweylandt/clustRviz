@@ -2,6 +2,7 @@
 #include <vector>
 #include <set>
 #include "clustRviz_logging.h"
+#include <RProgress.h>
 
 #define CLUSTRVIZ_CHECK_USER_INTERRUPT_RATE 50
 
