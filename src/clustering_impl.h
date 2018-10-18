@@ -20,7 +20,23 @@ public:
   l1(l1_),
   n(X_.rows()),
   p(X_.cols()),
-  num_edges(D_.rows()){
+  num_edges(D_.rows()),
+  V(NULL, num_edges, p),
+  Z(NULL, num_edges, p),
+  V_old(NULL, num_edges, p),
+  Z_old(NULL, num_edges, p){
+
+    // Set sizes for backing buffers
+    V_buffer.resize(num_edges, p);
+    V_old_buffer.resize(num_edges, p);
+    Z_buffer.resize(num_edges, p);
+    Z_old_buffer.resize(num_edges, p);
+
+    // Map V, Z, V_old, Z_old against their (now allocated) storage buffers
+    new (&V) Eigen::Map<Eigen::MatrixXd>(V_buffer.data(), num_edges, p);
+    new (&V_old) Eigen::Map<Eigen::MatrixXd>(V_old_buffer.data(), num_edges, p);
+    new (&Z) Eigen::Map<Eigen::MatrixXd>(Z_buffer.data(), num_edges, p);
+    new (&Z_old) Eigen::Map<Eigen::MatrixXd>(Z_old_buffer.data(), num_edges, p);
 
     // Set initial values for optimization variables
     U = X;
@@ -46,6 +62,12 @@ public:
     u_step_solver.compute(IDTD);
   };
 
+  void stop_saving_history(){
+    // Map V_old, Z_old against their associated working copies' buffers
+    new (&V_old) Eigen::Map<Eigen::MatrixXd>(V_buffer.data(), num_edges, p);
+    new (&Z_old) Eigen::Map<Eigen::MatrixXd>(Z_buffer.data(), num_edges, p);
+  }
+
   bool is_interesting_iter(){
     // FIXME? A better check would be v_zeros != v_zeros_old for fusion IDs
     // not just number
@@ -63,17 +85,17 @@ public:
 
   void admm_step(){
     // U-update
-    U = u_step_solver.solve(X + rho * D.transpose() * (V - Z));
+    U = u_step_solver.solve(X + rho * D.transpose() * (V_old - Z_old));
     Eigen::MatrixXd DU = D * U;
     ClustRVizLogger::debug("U = ") << U;
 
     // V-update
-    Eigen::MatrixXd DUZ = DU + Z;
+    Eigen::MatrixXd DUZ = DU + Z_old;
     V = MatrixProx(DUZ, gamma / rho, weights, l1);
     ClustRVizLogger::debug("V = ") << V;
 
     // Z-update
-    Z += DU - V;
+    Z = Z_old + DU - V;
     ClustRVizLogger::debug("Z = ") << Z;
 
     // Identify cluster fusions (rows of V which have gone to zero)
@@ -164,15 +186,21 @@ private:
 
   // Current copies of ADMM variables
   Eigen::MatrixXd U; // Primal variable
-  Eigen::MatrixXd V; // Split variable
-  Eigen::MatrixXd Z; // Dual variable
+  Eigen::Map<Eigen::MatrixXd> V;
+  Eigen::MatrixXd V_buffer; // Split variable
+  Eigen::Map<Eigen::MatrixXd> Z;
+  Eigen::MatrixXd Z_buffer; // Dual variable
   Eigen::ArrayXi v_zeros; // Fusion indicators
   Eigen::Index nzeros; // Number of fusions
 
   // Old versions (used for back-tracking and fusion counting)
   Eigen::Index nzeros_old;
-  Eigen::MatrixXd V_old;
-  Eigen::MatrixXd Z_old;
+
+  Eigen::MatrixXd V_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> V_old;
+  Eigen::MatrixXd Z_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> Z_old;
+
   Eigen::ArrayXi  v_zeros_old;
 
   // Internal storage buffers

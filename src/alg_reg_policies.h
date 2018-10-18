@@ -26,6 +26,10 @@ public:
   keep(keep_){};
 
   void solve(){
+    // We don't need to hold on to history here, so we can map the "working" and "past"
+    // copies onto the save buffer to avoid copies
+    problem.stop_saving_history();
+
     // The PROBLEM_TYPE constructor already stores the gamma = 0 solution,
     // so we start by setting epsilon to gamma and beginning a solve
     problem.gamma = epsilon;
@@ -131,8 +135,6 @@ public:
       double gamma_lower = gamma_old;
 
       while(rep_iter){
-        // Re-load old copies to have a true "back-track" instead of a refinement
-        problem.load_old_variables();
         problem.gamma = gamma;
         problem.admm_step();
 

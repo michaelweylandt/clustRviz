@@ -25,7 +25,57 @@ public:
     n(X_.rows()),
     p(X_.cols()),
     num_row_edges(D_row_.rows()),
-    num_col_edges(D_col_.cols()){
+    num_col_edges(D_col_.cols()),
+    V_row(NULL, num_row_edges, p),
+    Z_row(NULL, num_row_edges, p),
+    V_row_old(NULL, num_row_edges, p),
+    Z_row_old(NULL, num_row_edges, p),
+    V_col(NULL, num_col_edges, n),
+    Z_col(NULL, num_col_edges, n),
+    V_col_old(NULL, num_col_edges, n),
+    Z_col_old(NULL, num_col_edges, n),
+    U(NULL, n, p),
+    P(NULL, n, p),
+    Q(NULL, n, p),
+    U_old(NULL, n, p),
+    P_old(NULL, n, p),
+    Q_old(NULL, n, p)
+    {
+
+    // Set sizes for backing buffers
+    V_row_buffer.resize(num_row_edges, p);
+    V_row_old_buffer.resize(num_row_edges, p);
+    Z_row_buffer.resize(num_row_edges, p);
+    Z_row_old_buffer.resize(num_row_edges, p);
+    V_col_buffer.resize(num_col_edges, n);
+    V_col_old_buffer.resize(num_col_edges, n);
+    Z_col_buffer.resize(num_col_edges, n);
+    Z_col_old_buffer.resize(num_col_edges, n);
+    U_buffer.resize(n, p);
+    P_buffer.resize(n, p);
+    Q_buffer.resize(n, p);
+    U_old_buffer.resize(n, p);
+    P_old_buffer.resize(n, p);
+    Q_old_buffer.resize(n, p);
+
+    // Map variables against their (now-allocated) storage buffers
+    new (&V_row) Eigen::Map<Eigen::MatrixXd>(V_row_buffer.data(), num_row_edges, p);
+    new (&V_row_old) Eigen::Map<Eigen::MatrixXd>(V_row_old_buffer.data(), num_row_edges, p);
+    new (&Z_row) Eigen::Map<Eigen::MatrixXd>(Z_row_buffer.data(), num_row_edges, p);
+    new (&Z_row_old) Eigen::Map<Eigen::MatrixXd>(Z_row_old_buffer.data(), num_row_edges, p);
+
+    new (&V_col) Eigen::Map<Eigen::MatrixXd>(V_col_buffer.data(), num_col_edges, n);
+    new (&V_col_old) Eigen::Map<Eigen::MatrixXd>(V_col_old_buffer.data(), num_col_edges, n);
+    new (&Z_col) Eigen::Map<Eigen::MatrixXd>(Z_col_buffer.data(), num_col_edges, n);
+    new (&Z_col_old) Eigen::Map<Eigen::MatrixXd>(Z_col_old_buffer.data(), num_col_edges, n);
+
+    new (&U) Eigen::Map<Eigen::MatrixXd>(U_buffer.data(), n, p);
+    new (&P) Eigen::Map<Eigen::MatrixXd>(P_buffer.data(), n, p);
+    new (&Q) Eigen::Map<Eigen::MatrixXd>(Q_buffer.data(), n, p);
+
+    new (&U_old) Eigen::Map<Eigen::MatrixXd>(U_old_buffer.data(), n, p);
+    new (&P_old) Eigen::Map<Eigen::MatrixXd>(P_old_buffer.data(), n, p);
+    new (&Q_old) Eigen::Map<Eigen::MatrixXd>(Q_old_buffer.data(), n, p);
 
     // Set initial values for optimization variables
     U = X;
@@ -64,6 +114,18 @@ public:
     col_primal_solver.compute(IDDT_col);
   };
 
+  void stop_saving_history(){
+    // Map old variables against their associated working copies' buffers
+    new (&V_row_old) Eigen::Map<Eigen::MatrixXd>(V_row_buffer.data(), num_row_edges, p);
+    new (&Z_row_old) Eigen::Map<Eigen::MatrixXd>(Z_row_buffer.data(), num_row_edges, p);
+    new (&V_col_old) Eigen::Map<Eigen::MatrixXd>(V_col_buffer.data(), num_col_edges, n);
+    new (&Z_col_old) Eigen::Map<Eigen::MatrixXd>(Z_col_buffer.data(), num_col_edges, n);
+
+    new (&U_old) Eigen::Map<Eigen::MatrixXd>(U_buffer.data(), n, p);
+    new (&P_old) Eigen::Map<Eigen::MatrixXd>(P_buffer.data(), n, p);
+    new (&Q_old) Eigen::Map<Eigen::MatrixXd>(Q_buffer.data(), n, p);
+  }
+
   bool is_interesting_iter(){
     // FIXME? A better check would be fusion IDs, not just number
     return (nzeros_row != nzeros_row_old) | (nzeros_col != nzeros_col_old);
@@ -81,44 +143,44 @@ public:
   void admm_step(){
     /// Row-fusion iterations
     // Primal Update
-    Eigen::MatrixXd T = row_primal_solver.solve(U + P + rho * D_row.transpose() * (V_row - Z_row));
+    Eigen::MatrixXd T = row_primal_solver.solve(U_old + P_old + rho * D_row.transpose() * (V_row_old - Z_row_old));
 
     Eigen::MatrixXd DT = D_row * T;
     ClustRVizLogger::debug("T = ") << T;
 
     // Copy Update
-    Eigen::MatrixXd DTZ = DT + Z_row;
+    Eigen::MatrixXd DTZ = DT + Z_row_old;
     V_row = MatrixProx(DTZ, gamma / rho, weights_row, l1);
     ClustRVizLogger::debug("V_row = ") << V_row;
 
     // Dual Update
-    Z_row += DT - V_row;
+    Z_row = Z_row_old + DT - V_row_old;
     ClustRVizLogger::debug("Z_row = ") << Z_row;
     /// END Row-fusion iterations
 
     // DLPA Updates
-    P += U - T;
-    Eigen::MatrixXd TQT = T + Q; TQT.transposeInPlace();
+    P = P_old + U_old - T;
+    Eigen::MatrixXd TQT = T + Q_old; TQT.transposeInPlace();
 
     /// Column-fusion iterations
     // Primal Update
-    Eigen::MatrixXd S = col_primal_solver.solve(TQT + rho * D_col * (V_col - Z_col));
+    Eigen::MatrixXd S = col_primal_solver.solve(TQT + rho * D_col * (V_col_old - Z_col_old));
     Eigen::MatrixXd DTS = D_col.transpose() * S;
     ClustRVizLogger::debug("S = ") << S;
 
     // Copy Update
-    Eigen::MatrixXd DTSZ = DTS + Z_col;
+    Eigen::MatrixXd DTSZ = DTS + Z_col_old;
     V_col = MatrixProx(DTSZ, gamma / rho, weights_col, l1);
     ClustRVizLogger::debug("V_col = ") << V_col;
 
     // Dual Update
-    Z_col += DTS - V_col;
+    Z_col = Z_col_old + DTS - V_col;
     ClustRVizLogger::debug("Z_col = ") << Z_col;
     /// END Column-fusion iterations
 
     // DLPA Updates + New U
     U = S.transpose();
-    Q += T - U;
+    Q = Q_old + T - U;
 
     // Identify row fusions (rows of V_row which have gone to zero)
     Eigen::VectorXd v_row_norms = V_row.rowwise().squaredNorm();
@@ -247,11 +309,16 @@ private:
   Eigen::LLT<Eigen::MatrixXd> col_primal_solver;
 
   // Current copies of ADMM variables
-  Eigen::MatrixXd U;     // Primal Variable
-  Eigen::MatrixXd V_row; // Split Variable - row subproblem
-  Eigen::MatrixXd Z_row; // Dual Variable - row subproblem
-  Eigen::MatrixXd V_col; // Split Variable - column subproblem
-  Eigen::MatrixXd Z_col; // Dual Variable - column subproblem
+  Eigen::MatrixXd U_buffer;     // Primal Variable
+  Eigen::Map<Eigen::MatrixXd> U;
+  Eigen::MatrixXd V_row_buffer; // Split Variable - row subproblem
+  Eigen::Map<Eigen::MatrixXd> V_row;
+  Eigen::MatrixXd Z_row_buffer; // Dual Variable - row subproblem
+  Eigen::Map<Eigen::MatrixXd> Z_row;
+  Eigen::MatrixXd V_col_buffer; // Split Variable - column subproblem
+  Eigen::Map<Eigen::MatrixXd> V_col;
+  Eigen::MatrixXd Z_col_buffer; // Dual Variable - column subproblem
+  Eigen::Map<Eigen::MatrixXd> Z_col;
   Eigen::ArrayXi v_row_zeros; // Fusion indicators
   Eigen::ArrayXi v_col_zeros;
   Eigen::Index nzeros_row; // Fusion counts
@@ -259,19 +326,28 @@ private:
 
   // The DLPA (on which CBASS is based) adds two auxiliary variables -- P & Q --
   // with the same dimensions as the optimization variable, initialized to zero
-  Eigen::MatrixXd P;
-  Eigen::MatrixXd Q;
+  Eigen::MatrixXd P_buffer;
+  Eigen::MatrixXd Q_buffer;
+  Eigen::Map<Eigen::MatrixXd> P;
+  Eigen::Map<Eigen::MatrixXd> Q;
 
   // Old versions (used for back-tracking and fusion counting)
   Eigen::Index nzeros_row_old;
   Eigen::Index nzeros_col_old;
-  Eigen::MatrixXd U_old;
-  Eigen::MatrixXd P_old;
-  Eigen::MatrixXd Q_old;
-  Eigen::MatrixXd V_row_old;
-  Eigen::MatrixXd Z_row_old;
-  Eigen::MatrixXd V_col_old;
-  Eigen::MatrixXd Z_col_old;
+  Eigen::MatrixXd U_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> U_old;
+  Eigen::MatrixXd P_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> P_old;
+  Eigen::MatrixXd Q_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> Q_old;
+  Eigen::MatrixXd V_row_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> V_row_old;
+  Eigen::MatrixXd Z_row_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> Z_row_old;
+  Eigen::MatrixXd V_col_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> V_col_old;
+  Eigen::MatrixXd Z_col_old_buffer;
+  Eigen::Map<Eigen::MatrixXd> Z_col_old;
   Eigen::ArrayXi  v_row_zeros_old;
   Eigen::ArrayXi  v_col_zeros_old;
 

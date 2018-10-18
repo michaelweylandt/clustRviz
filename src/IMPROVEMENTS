@@ -1,0 +1,20 @@
+HOW TO AVOID COPIES IN BACKTRACKING
+===================================
+
+Our goal is to avoid (or at least minimize) the number
+of copies made in each back-tracking iteration. As currently
+written, we need to copy _all_ the auxiliary variables before
+each (inner) back-track loop, leading to a notable performance degradation
+
+New scheme:
+- Write all updates using V_old, Z_old, etc as needed
+
+- Instead of having U, V, .... as Eigen::MatrixXd, we have them as maps
+  to separately allocated buffers (both the working and old versions)
+
+- In the regular version, have the working and old point to the same buffers
+  -- this avoids copies to load V_old, Z_old in the fixed step size versions
+
+- In the back-track version, have separate buffers, but only copy the working
+  into the old at the end of a BT iter
+  -- there's still a copy here, but only one per outer loop instead of one per inner loop
