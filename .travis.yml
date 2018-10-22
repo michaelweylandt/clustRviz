@@ -4,11 +4,24 @@ sudo: false
 cache: packages
 warnings_are_errors: true
 
-## Necessary for gifski dependency
+## Tweaks to default build configuration
+##
+## gifski (required by gganimate) requires cargo
+## newer gcc/g++ to try to avoid weird Eigen bug
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
       - cargo
+      - gcc-5
+      - g++-5
+
+env:
+  global:
+    - MAKEFLAGS="-j 2"
+    - CXX=g++-5
+    - CC=gcc-5
 
 before_install:
   - gcc --version
