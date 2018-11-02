@@ -14,18 +14,23 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - cargo
-      - gcc-5
-      - g++-5
+      - gcc-8
+      - g++-8
+      - gfortran-8
 
 env:
   global:
     - MAKEFLAGS="-j 2"
-    - CXX=g++-5
-    - CC=gcc-5
+    - CXX=g++-8
+    - CC=gcc-8
 
 before_install:
-  - gcc --version
-  - g++ --version
+  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 100
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 100
+  - sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-8 100
+  - mkdir -p ~/.R
+  - echo 'CC=gcc-8' > ~/.R/Makevars; echo "CXX=g++-8" >> ~/.R/Makevars
+  - cat ~/.R/Makevars
   - Rscript -e "source('build_steps.R'); before_install()"
 
 after_success:
