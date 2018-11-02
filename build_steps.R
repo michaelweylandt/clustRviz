@@ -16,7 +16,8 @@ before_install <- function(){
   }
   cat("INSTALLING RUN DEPENDENCIES -------- \n\n")
   devtools::install_deps(dependencies=c("Depends", "Imports", "LinkingTo", "Suggests", "Enhances"),
-                         quiet=FALSE, upgrade=FALSE, auth_token = Sys.getenv("GITHUB_PAT") %||% devtools::github_pat(FALSE))
+                         quiet=FALSE, upgrade=FALSE,
+                         auth_token = Sys.getenv("GITHUB_TOKEN") %||% devtools::github_pat(FALSE))
 
   cat("INSTALLING TEST DEPENDENCIES -------- \n\n")
   for(pkg in c("cvxclustr", "cvxbiclustr")){
