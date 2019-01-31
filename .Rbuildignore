@@ -1,0 +1,17 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^docs$
+^_pkgdown\.yml$
+^pkgdown$
+^.travis\.yml$
+.gitignore.deploy
+README.Rmd
+README.md
+^README-.*\.png$
+figs/*
+build_steps.R
+^codecov\.yml$
+LICENSE
+CONTRIBUTORS
+.github/*
+^appveyor\.yml$
