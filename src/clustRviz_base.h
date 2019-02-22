@@ -1,6 +1,10 @@
 #ifndef CLUSTRVIZ_BASE_H
 #define CLUSTRVIZ_BASE_H 1
 
+#ifdef _WIN32
+typedef unsigned int uint
+#endif
+
 #include <RcppEigen.h>
 #include <vector>
 #include <set>
