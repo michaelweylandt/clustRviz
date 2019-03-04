@@ -70,10 +70,10 @@ private:
   PROBLEM_TYPE problem;
   const double epsilon;
   const double t;
-  const int max_iter = 10000;
+  const unsigned int max_iter = 10000;
 
   // Algorithm state
-  int iter = 0;
+  unsigned int iter = 0;
   bool solved = false;
 };
 
@@ -216,16 +216,16 @@ public:
 private:
   PROBLEM_TYPE problem;
   const double epsilon;
-  const int max_iter = 10000;
-  const int burn_in  = 50;
+  const unsigned int max_iter = 10000;
+  const unsigned int burn_in  = 50;
   const double back  = 0.5;
-  const int viz_max_inner_iter  = 15;
+  const unsigned int viz_max_inner_iter  = 15;
   const double viz_initial_step = 1.1;
   const double viz_small_step   = 1.01;
 
   // Algorithm state
   double t;
-  int iter = 0;
+  unsigned int iter = 0;
   bool solved = false;
 };
 

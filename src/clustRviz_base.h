@@ -5,10 +5,6 @@
 #include <vector>
 #include <set>
 
-#ifdef _WIN32
-typedef unsigned int uint
-#endif
-
 #define CLUSTRVIZ_STATUS_UPDATE_TIME_SECS 0.1 // Every 0.1s
 #define CLUSTRVIZ_STATUS_WIDTH_CHECK 20 // Every 20 status updates * 0.1s => every 2s
 

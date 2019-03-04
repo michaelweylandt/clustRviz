@@ -2,17 +2,17 @@
 
 Rcpp::List get_cluster_assignments_impl(const Eigen::MatrixXi& E,
                                         const Eigen::VectorXi& edge_ind,
-                                        int n){
+                                        unsigned int n){
 
   // We use a simple (depth-first?) search to determine the connected components
   // of the graphs. Since we frequently need to check if a vertex is in a component,
-  // we represent each component as a std::set<int>, and we store the components
+  // we represent each component as a std::set<unsigned int>, and we store the components
   // in a std::vector
-  std::vector<std::set<int> > components;
-  std::set<int> all_vertices_seen;
+  std::vector<std::set<unsigned int> > components;
+  std::set<unsigned int> all_vertices_seen;
 
   // Iterate over all possible edges - this big loop is a no-op where edge_ind == 0
-  for(uint i = 0; i < edge_ind.size(); i++){
+  for(unsigned int i = 0; i < edge_ind.size(); i++){
 
     if(edge_ind(i) != 0){ // If the edge is present
       int edge_begin = E(i, 0);
@@ -21,8 +21,8 @@ Rcpp::List get_cluster_assignments_impl(const Eigen::MatrixXi& E,
       // We begin by looking for the first vertex (here called "begin") in each component
       bool found_component_begin = false;
 
-      for(uint j = 0; j < components.size(); j++){
-        std::set<int>& component_j = components[j];
+      for(unsigned int j = 0; j < components.size(); j++){
+        std::set<unsigned int>& component_j = components[j];
 
         if(contains(component_j, edge_begin)){
           // Once we found a component containing the "begin" vertex, let's see if
@@ -38,10 +38,10 @@ Rcpp::List get_cluster_assignments_impl(const Eigen::MatrixXi& E,
           }
 
           // Now check other components
-          for(uint k = 0; k < components.size(); k++){
+          for(unsigned int k = 0; k < components.size(); k++){
             if(k != j){ // We handled k == j above
 
-              std::set<int>& component_k = components[k];
+              std::set<unsigned int>& component_k = components[k];
 
               if(contains(component_k, edge_end)){
                 found_component_end = true;
@@ -75,8 +75,8 @@ Rcpp::List get_cluster_assignments_impl(const Eigen::MatrixXi& E,
         // If it is, then we add edge_begin to the same component
         bool found_component_end_inner = false;
 
-        for(uint j = 0; j < components.size(); j++){
-          std::set<int>& component_j = components[j];
+        for(unsigned int j = 0; j < components.size(); j++){
+          std::set<unsigned int>& component_j = components[j];
           if(contains(component_j, edge_end)){
             // We didn't find edge_begin, but we do have edge_end, so let's add
             // edge_begin to the same component
@@ -90,7 +90,7 @@ Rcpp::List get_cluster_assignments_impl(const Eigen::MatrixXi& E,
         // If we can't find edge_begin or edge_end anywhere, they are both new
         // and get there own new component
         if(!found_component_end_inner){
-          std::set<int> new_component{edge_begin, edge_end};
+          std::set<unsigned int> new_component{edge_begin, edge_end};
           all_vertices_seen.insert(edge_begin);
           all_vertices_seen.insert(edge_end);
           components.push_back(new_component);
@@ -104,9 +104,9 @@ Rcpp::List get_cluster_assignments_impl(const Eigen::MatrixXi& E,
   // Now build things in a way that works for R
   //
   // Add singleton components for isolated vertices
-  for(int i = 1; i <= n; i++){ // We're using R's (1-based) vertex labels
+  for(unsigned int i = 1; i <= n; i++){ // We're using R's (1-based) vertex labels
     if(!contains(all_vertices_seen, i)){
-      std::set<int> new_component{i};
+      std::set<unsigned int> new_component{i};
       components.push_back(new_component);
     }
   }
@@ -115,11 +115,11 @@ Rcpp::List get_cluster_assignments_impl(const Eigen::MatrixXi& E,
   // This is independent of the order of the edge set / algorithm used
   std::sort(components.begin(),
             components.end(),
-            [](const std::set<int>& left, const std::set<int>& right){
+            [](const std::set<unsigned int>& left, const std::set<unsigned int>& right){
               return *left.begin() < *right.begin();
             });
 
-  int num_components = components.size();
+  unsigned int num_components = components.size();
 
   Rcpp::IntegerVector component_sizes(num_components, 1);
   Rcpp::IntegerVector component_indicators(n, -1);
@@ -127,7 +127,7 @@ Rcpp::List get_cluster_assignments_impl(const Eigen::MatrixXi& E,
   // Assign labels - loop over components and then elements within components
   // Requires irregular access to component_indicators, but it's O(1) (=O(n) total) instead
   // of searching through all the sets repeatedly
-  for(uint i = 0; i < components.size(); i++){
+  for(unsigned int i = 0; i < components.size(); i++){
     std::set<int>& component_i = components[i];
     component_sizes[i] = component_i.size();
 
