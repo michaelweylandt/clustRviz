@@ -32,6 +32,10 @@ saveviz <- function(x, ...) {
 #' @importFrom RColorBrewer brewer.pal
 #' @rdname plot_carp
 #' @export
+
+frame_rate <- 10
+frames_number <- 100
+
 saveviz.CARP <- function(x,
                          file.name,
                          type = c("dendrogram", "path", "js"),
@@ -101,7 +105,7 @@ saveviz.CARP <- function(x,
                                   percent.seq = percent.seq)
       animation::ani.options(ani.width  = convert_units(width,  from = units, to = "px"),
                              ani.height = convert_units(height, from = units, to = "px"))
-      gganimate::anim_save(filename = file.name, animation = animate(p))
+      gganimate::anim_save(filename = file.name, animation = animate(p, nframes = frames_number, fps = frame_rate))
       invisible(file.name)
     },
     dendrogram = {
